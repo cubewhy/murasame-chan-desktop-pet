@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["layer-composer", "layer-composer-cli"]
