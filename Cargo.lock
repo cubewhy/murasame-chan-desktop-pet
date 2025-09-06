@@ -2112,6 +2112,7 @@ dependencies = [
  "layer-composer",
  "serde",
  "serde_json",
+ "zip",
 ]
 
 [[package]]

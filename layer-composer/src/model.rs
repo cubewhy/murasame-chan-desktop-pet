@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use zip::ZipArchive;
 
-use crate::TopLayerMetadata;
+use crate::{LayerMetadata, TopLayerMetadata};
 
 mod json_model {
     use std::collections::HashMap;
@@ -37,10 +37,12 @@ mod json_model {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ModelManifest {
     pub layers: BTreeMap<String, LayerManifest>, // NOTE: we care the order of the layers
 }
 
+#[derive(Clone, Debug)]
 pub enum LayerManifest {
     BaseLayer {
         offset: [i32; 2],
@@ -91,7 +93,7 @@ pub fn parse_model<T: std::io::Read + std::io::Seek>(
                 metadata,
                 description,
             } => {
-                let metadata: TopLayerMetadata = {
+                let metadata: LayerMetadata = {
                     let Ok(mut entry) = model_zip.by_name(format!("metadata/{metadata}").as_str())
                     else {
                         // skip parse this layer: no metadata found
@@ -102,7 +104,7 @@ pub fn parse_model<T: std::io::Read + std::io::Seek>(
 
                 LayerManifest::TopLayer {
                     description: description.to_owned(),
-                    metadata,
+                    metadata: metadata.top_layer,
                 }
             }
             json_model::Layer::BaseLayer {
