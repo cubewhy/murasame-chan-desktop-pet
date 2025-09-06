@@ -1,4 +1,4 @@
-# Murasame-chan Desktop Pat
+# Murasame-chan Desktop Pet
 
 ## Resources
 
