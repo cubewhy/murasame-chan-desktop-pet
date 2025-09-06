@@ -21,6 +21,7 @@ pub fn run() -> anyhow::Result<()> {
     // compose images
     let result = compose_layers(&base, &top, &metadata);
     result.save(args.output)?;
+    println!("Success!");
 
     Ok(())
 }

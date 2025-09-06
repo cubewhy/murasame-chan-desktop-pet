@@ -1,0 +1,16 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+edition = "2024"
+default-run = "frontend"
+
+[dependencies]
+anyhow = "1.0.99"
+dotenvy = "0.15.7"
+eframe = "0.32.2"
+egui_extras = { version = "0.32.2", features = ["default", "image"] }
+env_logger = "0.11.8"
+image = { version = "0.25.8", features = ["png"] }
+layer-composer = { path = "../layer-composer" }
+serde_json = "1.0.143"
+url = "2.5.7"
