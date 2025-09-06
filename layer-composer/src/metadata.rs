@@ -10,8 +10,8 @@ pub struct LayerMetadata {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TopLayerMetadata {
-    pub x: u32,
-    pub y: u32,
+    pub x: i32,
+    pub y: i32,
     pub origin_width: u32,
     pub origin_height: u32,
     pub scaled_width: u32,

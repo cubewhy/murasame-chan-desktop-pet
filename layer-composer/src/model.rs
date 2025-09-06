@@ -38,7 +38,7 @@ mod json_model {
 }
 
 pub struct ModelManifest {
-    pub layers: BTreeMap<String, LayerManifest>, // NOTE: we care about the order of the layers
+    pub layers: BTreeMap<String, LayerManifest>, // NOTE: we care the order of the layers
 }
 
 pub enum LayerManifest {

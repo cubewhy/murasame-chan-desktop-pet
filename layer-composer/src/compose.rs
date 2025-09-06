@@ -1,6 +1,6 @@
 use image::{DynamicImage, ImageBuffer, Rgba, imageops};
 
-use crate::LayerMetadata;
+use crate::{model::LayerManifest, LayerMetadata};
 
 pub fn compose_layers(
     base_layer: &DynamicImage,
@@ -38,3 +38,44 @@ pub fn compose_layers(
 
     base
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum ComposeError {
+    #[error("Bad top layer manifest")]
+    BadTopLayerManifest,
+    #[error("Bad base layer manifest")]
+    BadBaseLayerManifest
+}
+
+pub fn compose_layers_from_model(
+    base_layer: &DynamicImage,
+    top_layer: &DynamicImage,
+    base_layer_manifest: &LayerManifest,
+    top_layer_manifest: &LayerManifest,
+) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, ComposeError> {
+    // build metadata with offset
+    let (offset_x, offset_y) = match base_layer_manifest {
+        LayerManifest::BaseLayer { offset, description: _ } => {
+            (offset[0], offset[1])
+        },
+        _ => return Err(ComposeError::BadBaseLayerManifest),
+    };
+    let top_layer_metadata = match top_layer_manifest {
+        LayerManifest::TopLayer { description: _, metadata } => {
+            // clone metadata
+            let mut metadata = metadata.clone();
+            // apply offset
+            metadata.x += offset_x;
+            metadata.y += offset_y;
+
+            metadata
+        },
+        _ => return Err(ComposeError::BadTopLayerManifest),
+    };
+
+    let metadata = LayerMetadata { top_layer: top_layer_metadata };
+    
+    // render the image
+    Ok(compose_layers(base_layer, top_layer, &metadata))
+}
+
