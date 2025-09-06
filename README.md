@@ -3,6 +3,7 @@
 ## Resources
 
 - The layer editor: https://gist.github.com/cubewhy/ae221ff818b7e8819d6b573ca6d70872
+- The model editor: https://gist.github.com/cubewhy/8791f6fbc889c15cce172dccf3977489
 - Freemote: https://github.com/UlyssesWu/FreeMote
 - xp3-tools: https://github.com/cubewhy/xp3-tools
 

@@ -13,8 +13,8 @@ pub fn compose_layers(
 
     top = imageops::resize(
         &top,
-        metadata.top_layer.width,
-        metadata.top_layer.height,
+        metadata.top_layer.scaled_width,
+        metadata.top_layer.scaled_height,
         imageops::FilterType::Lanczos3,
     );
 
