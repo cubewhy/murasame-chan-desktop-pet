@@ -25,6 +25,7 @@ mod json_model {
         },
         BaseLayer {
             #[serde(rename = "type")]
+            #[allow(unused)]
             r#type: BaseType,
             offset: [i32; 2],
             description: Option<String>,
