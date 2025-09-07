@@ -35,8 +35,8 @@ pub fn run() -> anyhow::Result<()> {
 fn model_info(path: &PathBuf) -> anyhow::Result<()> {
     // Open zip file
     let mut zip = ZipArchive::new(File::open(path)?)?;
-    let model = layer_composer::parse_model(&mut zip)?;
-    
+    let model = layer_composer::parse_model_manifest(&mut zip)?;
+
     println!("{model:?}");
     
     Ok(())

@@ -1,8 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, io::Read};
 
+use image::DynamicImage;
 use zip::ZipArchive;
 
-use crate::{LayerMetadata, TopLayerMetadata};
+use crate::{LayerMetadata, TopLayerMetadata, compose::ComposeError, compose_layers_from_model};
 
 mod json_model {
     use std::collections::HashMap;
@@ -60,9 +61,15 @@ pub enum ModelError {
     NoManifest,
     #[error("Failed to parse json {0}")]
     JsonParsing(#[from] serde_json::Error),
+    #[error("No layer with name {0}: {1}")]
+    NoLayer(String, #[source] zip::result::ZipError),
+    #[error("Failed to open image")]
+    ImageParsing(#[from] image::ImageError),
+    #[error("IO error")]
+    IOError(#[from] std::io::Error),
 }
 
-pub fn parse_model<T: std::io::Read + std::io::Seek>(
+pub fn parse_model_manifest<T: std::io::Read + std::io::Seek>(
     model_zip: &mut ZipArchive<T>,
 ) -> Result<ModelManifest, ModelError> {
     // parse manifest json
@@ -119,4 +126,95 @@ pub fn parse_model<T: std::io::Read + std::io::Seek>(
         layers.insert(layer_filename.to_string(), layer_manifest);
     }
     Ok(ModelManifest { layers })
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum RenderError {
+    #[error("No matched layer manifest for layer {0}")]
+    NoMatchedLayerManifest(String),
+    #[error("Cannot remix multiple base layers")]
+    MultipleBaseLayers,
+    #[error("No base layer loaded")]
+    NoBaseLayerLoaded,
+    #[error("Failed to compose: {0}")]
+    Compose(#[from] ComposeError),
+    #[error("model error")]
+    Model(#[from] ModelError),
+}
+
+pub struct Model<'a, T>
+where
+    T: std::io::Read + std::io::Seek,
+{
+    manifest: ModelManifest,
+    zip: &'a mut ZipArchive<T>,
+}
+
+impl<'a, T> Model<'a, T>
+where
+    T: std::io::Read + std::io::Seek,
+{
+    pub fn from_zip(zip: &'a mut ZipArchive<T>) -> Result<Self, ModelError> {
+        let manifest = parse_model_manifest(zip)?;
+        Ok(Self { manifest, zip })
+    }
+
+    pub fn render(&mut self, layers: &Vec<String>) -> Result<DynamicImage, RenderError> {
+        let mut outcome: Option<DynamicImage> = None;
+        let mut base_layer_manifest: Option<LayerManifest> = None;
+        for layer in layers {
+            let layer_manifest = {
+                let Some(layer_manifest) = self.manifest.layers.get(layer) else {
+                    return Err(RenderError::NoMatchedLayerManifest(layer.to_string()));
+                };
+                layer_manifest.clone()
+            };
+            match &layer_manifest {
+                LayerManifest::BaseLayer { .. } => {
+                    if outcome.is_none() {
+                        outcome = Some(self.get_image(layer)?);
+                        base_layer_manifest = Some(layer_manifest);
+                    } else {
+                        return Err(RenderError::MultipleBaseLayers);
+                    }
+                }
+                LayerManifest::TopLayer { .. } => {
+                    if let Some(base_layer) = outcome {
+                        let top_layer = self.get_image(layer)?;
+                        outcome = Some(
+                            compose_layers_from_model(
+                                &base_layer,
+                                &top_layer,
+                                base_layer_manifest.as_ref().unwrap(),
+                                &layer_manifest,
+                            )?
+                            .into(),
+                        );
+                    } else {
+                        return Err(RenderError::NoBaseLayerLoaded);
+                    }
+                }
+            }
+        }
+
+        Ok(outcome.unwrap())
+    }
+
+    pub fn get_image(&mut self, layer_name: impl Into<String>) -> Result<DynamicImage, ModelError> {
+        let layer_name = layer_name.into();
+        // get the entry
+        let mut entry = self
+            .zip
+            .by_name(&format!("layers/{layer_name}"))
+            .map_err(|_err| ModelError::NoLayer(layer_name, _err))?;
+
+        // read to bytes
+        let mut buf = Vec::new();
+        entry.read_to_end(&mut buf)?;
+
+        // read image
+        let image = image::load_from_memory(&mut buf)?;
+
+        Ok(image)
+    }
 }
