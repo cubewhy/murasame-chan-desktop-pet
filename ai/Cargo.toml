@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.99"
 async-trait = "0.1.89"
 dynfmt = { version = "0.1.5", features = ["curly"] }
 reqwest = { version = "0.12.23", features = ["json"] }
+schemars = { version = "1.0.4", features = ["derive"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
 thiserror = "2.0.16"

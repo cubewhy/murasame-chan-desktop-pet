@@ -1,6 +1,7 @@
+use crate::{utils::{inlined_openapi_schema_for, sanitize_for_gemini_response_schema}, LLM};
 use async_trait::async_trait;
-
-use crate::LLM;
+use schemars::JsonSchema;
+use serde_json::Value as JsonValue;
 
 pub struct Gemini<'a> {
     api_key: &'a str,
@@ -27,6 +28,9 @@ pub enum MessagePart {
 pub struct GenerationConfig {
     thinking_config: ThinkingConfig,
     temperature: f32,
+
+    response_mime_type: Option<String>,
+    response_schema: Option<JsonValue>,
 }
 
 impl Default for GenerationConfig {
@@ -34,6 +38,8 @@ impl Default for GenerationConfig {
         Self {
             thinking_config: ThinkingConfig::default(),
             temperature: 1.0,
+            response_mime_type: None,
+            response_schema: None,
         }
     }
 }
@@ -59,6 +65,38 @@ impl<'a> Gemini<'a> {
             chat_history: Vec::new(),
             generation_config: GenerationConfig::default(),
         }
+    }
+
+    pub fn set_thinking(&mut self, state: bool) {
+        if state {
+            self.generation_config.thinking_config.thinking_budget = -1;
+        } else {
+            self.generation_config.thinking_config.thinking_budget = 0;
+        }
+    }
+
+    /// Force JSON output with a custom JSON Schema (as raw serde_json::Value).
+    pub fn set_json_schema_value(&mut self, schema: serde_json::Value) {
+        self.generation_config.response_mime_type = Some("application/json".to_string());
+        self.generation_config.response_schema = Some(schema);
+    }
+
+    /// Clear structured output (back to free-form text).
+    pub fn clear_json_schema(&mut self) {
+        self.generation_config.response_mime_type = None;
+        self.generation_config.response_schema = None;
+    }
+
+    /// Configure `response_schema` from Rust type `T` (OpenAPI subset).
+    pub fn set_json_schema<T>(&mut self)
+    where
+        T: JsonSchema,
+    {
+        let schema_value = inlined_openapi_schema_for::<T>();
+        let schema_value = sanitize_for_gemini_response_schema(schema_value);
+
+        self.generation_config.response_mime_type = Some("application/json".to_string());
+        self.generation_config.response_schema = Some(schema_value);
     }
 }
 
@@ -102,6 +140,8 @@ impl LLM for Gemini<'_> {
         let mut gen_cfg = GenerationConfigPayload {
             temperature: Some(self.generation_config.temperature),
             thinking_config: None,
+            response_mime_type: self.generation_config.response_mime_type.clone(),
+            response_schema: self.generation_config.response_schema.clone(),
         };
         if self.generation_config.thinking_config.thinking_budget >= 0 {
             gen_cfg.thinking_config = Some(ThinkingConfigPayload {
@@ -195,8 +235,16 @@ mod json_model {
     pub struct GenerationConfigPayload {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub temperature: Option<f32>,
+
         #[serde(skip_serializing_if = "Option::is_none")]
         pub thinking_config: Option<ThinkingConfigPayload>,
+
+        // New: structured outputs
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub response_mime_type: Option<String>,
+
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub response_schema: Option<serde_json::Value>,
     }
 
     #[derive(Serialize)]

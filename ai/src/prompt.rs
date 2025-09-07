@@ -1,10 +1,10 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 use dynfmt::Format;
 
 use crate::{
-    model::{UsageExample, response::Response},
     dataset::Dataset,
+    model::{UsageExample, response::Response},
 };
 
 pub struct Prompt {
@@ -14,35 +14,39 @@ pub struct Prompt {
 }
 
 impl Prompt {
-    pub fn new(character_name: String, user_title: String, dataset: Dataset) -> Self {
+    pub fn new(
+        character_name: impl Into<String>,
+        user_title: impl Into<String>,
+        dataset: Dataset,
+    ) -> Self {
         Self {
-            character_name,
-            user_title,
+            character_name: character_name.into(),
+            user_title: user_title.into(),
             dataset,
         }
     }
 
-    pub fn format_with_template<'a>(
-        &'a self,
-        template: &'a str,
-    ) -> Result<Cow<'a, str>, dynfmt::Error<'a>> {
+    pub fn format_with_template<'a>(&'a self, template: &'a str) -> Result<String, anyhow::Error> {
         // placeholders: {character_name}, {user_title}, {example_output}, {dataset}
-        let mut map = HashMap::new();
+        let mut map: HashMap<&str, String> = HashMap::new();
         map.insert("character_name", self.character_name.clone());
         map.insert("user_title", self.user_title.clone());
         map.insert("example_output", Response::generate_example());
         map.insert("dataset", self.dataset.to_prompt());
 
-        dynfmt::SimpleCurlyFormat.format(template, map)
+        dynfmt::SimpleCurlyFormat
+            .format(template, &map)
+            .map(|s| s.into_owned())
+            .map_err(|e| anyhow::anyhow!(e.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
+        dataset::{Dataset, Dialogue},
         model::{UsageExample, response::Response},
         prompt::Prompt,
-        dataset::{Dataset, Dialogue}
     };
 
     #[test]

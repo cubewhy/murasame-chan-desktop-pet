@@ -2,6 +2,7 @@ mod prompt;
 mod model;
 mod dataset;
 mod llm;
+pub(crate) mod utils;
 
 pub use prompt::Prompt;
 pub use model::{response::Response, UsageExample};
