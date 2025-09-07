@@ -14,12 +14,12 @@ impl Dialogue {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub struct SourceSet {
+pub struct Dataset {
     dialogues: Vec<Dialogue>,
     hide_character_name: bool,
 }
 
-impl SourceSet {
+impl Dataset {
     pub fn new(
         dialogues: Vec<Dialogue>,
         hide_character_name: bool,
@@ -76,19 +76,19 @@ mod json_model {
 
 #[cfg(test)]
 mod tests {
-    use crate::source_set::{Dialogue, SourceSet};
+    use crate::{Dataset, Dialogue};
 
     #[test]
-    fn parse_source_set_from_json() {
+    fn parse_dataset_from_json() {
         let json = r#"[{"character":"test","text":"itworks"}]"#;
-        let source_set = SourceSet::from_json(json, false).unwrap();
+        let dataset = Dataset::from_json(json, false).unwrap();
 
         let expected = {
             let mut dialogues = Vec::new();
             dialogues.push(Dialogue::new("test", "itworks"));
-            SourceSet::new(dialogues, false, |_| true)
+            Dataset::new(dialogues, false, |_| true)
         };
 
-        assert_eq!(source_set, expected);
+        assert_eq!(dataset, expected);
     }
 }

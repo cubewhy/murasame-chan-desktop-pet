@@ -22,7 +22,6 @@ pub struct Message {
 
 pub enum MessagePart {
     Text { text: String },
-    // TODO: image support
 }
 
 pub struct GenerationConfig {
@@ -54,8 +53,8 @@ impl Default for ThinkingConfig {
 impl<'a> Gemini<'a> {
     pub fn new(api_key: &'a str, model: &'a str, system_instruction: Option<&'a str>) -> Self {
         Self {
-            model,
             api_key,
+            model,
             system_instruction,
             chat_history: Vec::new(),
             generation_config: GenerationConfig::default(),
