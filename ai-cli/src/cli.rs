@@ -13,4 +13,6 @@ pub struct Cli {
     pub template: PathBuf,
     #[arg(long)]
     pub character_name: String,
+    #[arg(long)]
+    pub thinking: bool,
 }

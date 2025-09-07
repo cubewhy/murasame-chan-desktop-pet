@@ -20,7 +20,7 @@ pub async fn run() -> anyhow::Result<()> {
     // create llm instance
     // TODO: add support for other llms
     let mut llm = Gemini::new(&args.gemini_api_key, &args.model, Some(&system_instruction));
-    llm.set_thinking(false);
+    llm.set_thinking(args.thinking);
     // apply response schema
     llm.set_json_schema::<Vec<ai::Response>>();
 
