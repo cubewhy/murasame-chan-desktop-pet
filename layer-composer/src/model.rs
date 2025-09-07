@@ -85,15 +85,12 @@ pub fn parse_model_manifest<T: std::io::Read + std::io::Seek>(
 
     // read layers
     for (layer_filename, layer_metadata) in manifest.layers.iter() {
-        // NOTE: make sure &mut model_zip is dropped
+        if model_zip
+            .by_name(&format!("layers/{layer_filename}"))
+            .is_err()
         {
-            if model_zip
-                .by_name(&format!("layers/{layer_filename}"))
-                .is_err()
-            {
-                // layer image not found
-                continue;
-            }
+            // layer image not found
+            continue;
         }
         let layer_manifest: LayerManifest = match layer_metadata {
             json_model::Layer::TopLayer {
