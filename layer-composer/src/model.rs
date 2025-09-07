@@ -140,6 +140,8 @@ pub enum RenderError {
     Compose(#[from] ComposeError),
     #[error("model error")]
     Model(#[from] ModelError),
+    #[error("No layers provided")]
+    NoLayersProvided,
 }
 
 pub struct Model<'a, T>
@@ -197,7 +199,7 @@ where
             }
         }
 
-        Ok(outcome.unwrap())
+        outcome.ok_or_else(|| RenderError::NoLayersProvided)
     }
 
     pub fn get_image(&mut self, layer_name: impl Into<String>) -> Result<DynamicImage, ModelError> {
