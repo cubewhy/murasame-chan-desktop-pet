@@ -55,13 +55,13 @@ pub fn compose_layers_from_model(
 ) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, ComposeError> {
     // build metadata with offset
     let (offset_x, offset_y) = match base_layer_manifest {
-        LayerManifest::BaseLayer { offset, description: _ } => {
+        LayerManifest::BaseLayer { offset, .. } => {
             (offset[0], offset[1])
         },
         _ => return Err(ComposeError::BadBaseLayerManifest),
     };
     let top_layer_metadata = match top_layer_manifest {
-        LayerManifest::TopLayer { description: _, metadata } => {
+        LayerManifest::TopLayer { metadata, .. } => {
             // clone metadata
             let mut metadata = metadata.clone();
             // apply offset

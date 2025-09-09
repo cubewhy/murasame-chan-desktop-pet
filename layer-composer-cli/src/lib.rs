@@ -1,7 +1,7 @@
 use std::{fs::File, path::PathBuf};
 
 use clap::{CommandFactory, Parser};
-use layer_composer::{LayerMetadata, Model, compose_layers};
+use layer_composer::{compose_layers, LayerMetadata, Model, ModelTrait};
 use zip::ZipArchive;
 
 use crate::cli::Cli;
@@ -37,8 +37,8 @@ pub fn run() -> anyhow::Result<()> {
 
 fn render(model: &PathBuf, output: &PathBuf, layers: &Vec<String>) -> anyhow::Result<()> {
     // parse the model
-    let mut zip = ZipArchive::new(File::open(model)?)?;
-    let mut model = Model::from_zip(&mut zip)?;
+    let zip = ZipArchive::new(File::open(model)?)?;
+    let mut model = Model::from_zip(zip)?;
 
     let outcome_image = model.render(layers)?;
     // save the image

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 pub struct Cli {
     #[arg(long, env)]
     pub gemini_api_key: String,
-    pub model: String,
+    pub ai_model: String,
     #[arg(long)]
     pub dataset: PathBuf,
     #[arg(long, default_value = "User")]
@@ -15,4 +15,6 @@ pub struct Cli {
     pub character_name: String,
     #[arg(long)]
     pub thinking: bool,
+    #[arg(long)]
+    pub model: Option<PathBuf>,
 }

@@ -1,19 +1,20 @@
 use std::collections::HashMap;
 
 use dynfmt::Format;
+use layer_composer::ModelTrait;
 
 use crate::{
     dataset::Dataset,
     model::{UsageExample, response::Response},
 };
 
-pub struct Prompt {
+pub struct SystemPromptTemplate {
     character_name: String,
     user_title: String,
     dataset: Dataset,
 }
 
-impl Prompt {
+impl SystemPromptTemplate {
     pub fn new(
         character_name: impl Into<String>,
         user_title: impl Into<String>,
@@ -26,12 +27,27 @@ impl Prompt {
         }
     }
 
-    pub fn format_with_template<'a>(&'a self, template: &'a str) -> Result<String, anyhow::Error> {
+    pub fn format_with_template<'a>(
+        &'a self,
+        template: &'a str,
+        model: &Option<Box<dyn ModelTrait>>,
+    ) -> Result<String, anyhow::Error>
+    {
+
         // placeholders: {character_name}, {user_title}, {example_output}, {dataset}
         let mut map: HashMap<&str, String> = HashMap::new();
         map.insert("character_name", self.character_name.clone());
         map.insert("user_title", self.user_title.clone());
         map.insert("example_output", Response::generate_example());
+
+        let mut emotes = Vec::new();
+        if let Some(model) = model {
+            for (i, (_, desc)) in model.top_layer_descriptions().iter().enumerate() {
+                // NOTE: the order won't change since we use BTreeMap
+                emotes.push(format!("{}: {}", i, desc));
+            }
+        }
+        map.insert("layers", emotes.join("\n"));
         map.insert("dataset", self.dataset.to_prompt());
 
         dynfmt::SimpleCurlyFormat
@@ -46,7 +62,7 @@ mod tests {
     use crate::{
         dataset::{Dataset, Dialogue},
         model::{UsageExample, response::Response},
-        prompt::Prompt,
+        prompt::SystemPromptTemplate,
     };
 
     #[test]
@@ -57,13 +73,13 @@ mod tests {
             dialogues.push(Dialogue::new("test", "itworks"));
             Dataset::new(dialogues, true, |_| true)
         };
-        let prompt = Prompt {
+        let prompt = SystemPromptTemplate {
             character_name: "test".to_string(),
             user_title: "test_user".to_string(),
             dataset: example_dataset,
         };
 
-        let outcome = prompt.format_with_template("You're {character_name}, the user's title is {user_title}\nYour response must match the following schema: {example_output}\n<dataset>\n{dataset}\n</dataset>").unwrap();
+        let outcome = prompt.format_with_template("You're {character_name}, the user's title is {user_title}\nYour response must match the following schema: {example_output}\n<dataset>\n{dataset}\n</dataset>", &None).unwrap();
         assert_eq!(
             outcome,
             format!(

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+layer-composer = { path = "../layer-composer" }
 anyhow = "1.0.99"
 async-trait = "0.1.89"
 dynfmt = { version = "0.1.5", features = ["curly"] }

@@ -163,6 +163,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "dynfmt",
+ "layer-composer",
  "reqwest",
  "schemars",
  "serde",
@@ -177,8 +178,10 @@ dependencies = [
  "ai",
  "anyhow",
  "clap",
+ "layer-composer",
  "serde_json",
  "tokio",
+ "zip",
 ]
 
 [[package]]

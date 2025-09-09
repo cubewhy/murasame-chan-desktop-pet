@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+layer-composer = { path = "../layer-composer" }
 ai = { path = "../ai" }
 anyhow = "1.0.99"
+zip = "5.0.0"
 clap = { version = "4.5.47", features = ["derive", "env"] }
 serde_json = "1.0.143"
 tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros"] }
