@@ -3,13 +3,13 @@ use schemars::JsonSchema;
 use crate::model::UsageExample;
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, JsonSchema)]
-pub struct Response {
+pub struct AIResponse {
     pub response: String,
     pub japanese_response: String,
     pub layers: Vec<i32>,
 }
 
-impl UsageExample for Response {
+impl UsageExample for AIResponse {
     fn generate_example() -> String {
         let entity = Self {
             response: "<Chinese response goes here>".to_string(),

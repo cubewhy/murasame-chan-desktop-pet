@@ -5,6 +5,6 @@ mod llm;
 pub(crate) mod utils;
 
 pub use prompt::SystemPromptTemplate;
-pub use model::{response::Response, UsageExample};
+pub use model::{response::AIResponse, UsageExample};
 pub use dataset::{Dataset, Dialogue};
 pub use llm::{LLM, gemini};

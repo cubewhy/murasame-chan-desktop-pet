@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     fs::File,
     io::{Read, Write},
 };
@@ -32,9 +33,17 @@ pub async fn run() -> anyhow::Result<()> {
         .transpose()
         .map_err(|_err| anyhow::anyhow!("failed to open the model"))?;
 
-    let system_instruction = prompt.format_with_template(&template, &model)?;
+    let system_instruction = prompt.format_with_template(
+        &template,
+        &model.as_ref().map(|m| {
+            m.layer_descriptions()
+                .iter()
+                .map(|desc| (*desc.0, desc.1.description.to_owned()))
+                .collect::<BTreeMap<_, _>>()
+        }),
+    )?;
+
     // create llm instance
-    // TODO: add support for other llms
     let mut llm = Gemini::new(
         &args.gemini_api_key,
         &args.ai_model,
@@ -43,7 +52,7 @@ pub async fn run() -> anyhow::Result<()> {
     llm.set_thinking(args.thinking);
 
     // apply response schema
-    llm.set_json_schema::<Vec<ai::Response>>();
+    llm.set_json_schema::<Vec<ai::AIResponse>>();
 
     loop {
         print!(">>> ");
@@ -53,7 +62,7 @@ pub async fn run() -> anyhow::Result<()> {
         if buf.is_empty() {
             continue;
         }
-        let responses: Vec<ai::Response> = serde_json::from_str(&llm.chat(&buf).await?)?;
+        let responses: Vec<ai::AIResponse> = serde_json::from_str(&llm.chat(&buf).await?)?;
         for res in responses {
             println!(
                 "{} (ja: {}) (layers: {})",
@@ -62,7 +71,14 @@ pub async fn run() -> anyhow::Result<()> {
                 res.layers
                     .iter()
                     .map(|i| {
-                        model.as_mut().unwrap().top_layer_descriptions().get(*i as usize).unwrap().0.to_string()
+                        model
+                            .as_mut()
+                            .unwrap()
+                            .layer_descriptions()
+                            .get(i)
+                            .unwrap()
+                            .description
+                            .to_string()
                     })
                     .collect::<Vec<String>>()
                     .join(", ")

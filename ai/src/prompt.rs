@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use dynfmt::Format;
 use layer_composer::ModelTrait;
 
 use crate::{
     dataset::Dataset,
-    model::{UsageExample, response::Response},
+    model::{UsageExample, response::AIResponse},
 };
 
 pub struct SystemPromptTemplate {
@@ -30,7 +30,7 @@ impl SystemPromptTemplate {
     pub fn format_with_template<'a>(
         &'a self,
         template: &'a str,
-        model: &Option<Box<dyn ModelTrait>>,
+        layers: &Option<BTreeMap<i32, String>>,
     ) -> Result<String, anyhow::Error>
     {
 
@@ -38,16 +38,15 @@ impl SystemPromptTemplate {
         let mut map: HashMap<&str, String> = HashMap::new();
         map.insert("character_name", self.character_name.clone());
         map.insert("user_title", self.user_title.clone());
-        map.insert("example_output", Response::generate_example());
+        map.insert("example_output", AIResponse::generate_example());
 
-        let mut emotes = Vec::new();
-        if let Some(model) = model {
-            for (i, (_, desc)) in model.top_layer_descriptions().iter().enumerate() {
-                // NOTE: the order won't change since we use BTreeMap
-                emotes.push(format!("{}: {}", i, desc));
+        let mut layer_descriptions = Vec::new();
+        if let Some(layers) = layers {
+            for (i, desc) in layers.iter() {
+                layer_descriptions.push(format!("{}: {}", i, desc));
             }
         }
-        map.insert("layers", emotes.join("\n"));
+        map.insert("layers", layer_descriptions.join("\n"));
         map.insert("dataset", self.dataset.to_prompt());
 
         dynfmt::SimpleCurlyFormat
@@ -61,7 +60,7 @@ impl SystemPromptTemplate {
 mod tests {
     use crate::{
         dataset::{Dataset, Dialogue},
-        model::{UsageExample, response::Response},
+        model::{UsageExample, response::AIResponse},
         prompt::SystemPromptTemplate,
     };
 
@@ -84,7 +83,7 @@ mod tests {
             outcome,
             format!(
                 "You're test, the user's title is test_user\nYour response must match the following schema: {}\n<dataset>\nok\nitworks\n</dataset>",
-                Response::generate_example()
+                AIResponse::generate_example()
             )
         );
     }

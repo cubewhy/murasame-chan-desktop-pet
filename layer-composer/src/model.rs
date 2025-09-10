@@ -163,10 +163,15 @@ where
     zip: ZipArchive<T>,
 }
 
+pub struct LayerDescription {
+    pub name: String,
+    pub description: String,
+}
+
 pub trait ModelTrait {
     fn manifest(&self) -> &ModelManifest;
 
-    fn top_layer_descriptions(&self) -> Vec<(String, String)>;
+    fn layer_descriptions(&self) -> BTreeMap<i32, LayerDescription>;
 
     fn render(&mut self, layers: &[String]) -> Result<DynamicImage, RenderError>;
 
@@ -191,19 +196,22 @@ where
         &self.manifest
     }
 
-    fn top_layer_descriptions(&self) -> Vec<(String, String)> {
-        let mut vec = Vec::new();
-        for (layer_name, layer_manifest) in self.manifest.layers.iter() {
+    fn layer_descriptions(&self) -> BTreeMap<i32, LayerDescription> {
+        let mut map = BTreeMap::new();
+        for (i, (layer_name, layer_manifest)) in self.manifest.layers.iter().enumerate() {
             match layer_manifest {
                 LayerManifest::TopLayer { description, .. }
                 | LayerManifest::BaseLayer { description, .. } => {
                     if let Some(desc) = description {
-                        vec.push((layer_name.to_owned(), desc.to_owned()));
+                        map.insert(i.try_into().unwrap(), LayerDescription {
+                            name: layer_name.to_string(),
+                            description: desc.to_string()
+                        });
                     }
                 }
             }
         }
-        vec
+        map
     }
 
     fn render(&mut self, layers: &[String]) -> Result<DynamicImage, RenderError> {
