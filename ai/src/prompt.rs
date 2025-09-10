@@ -30,7 +30,7 @@ impl SystemPromptTemplate {
     pub fn format_with_template<'a>(
         &'a self,
         template: &'a str,
-        layers: &Option<BTreeMap<i32, String>>,
+        layers: Option<BTreeMap<i32, String>>,
     ) -> Result<String, anyhow::Error>
     {
 
@@ -42,7 +42,7 @@ impl SystemPromptTemplate {
 
         let mut layer_descriptions = Vec::new();
         if let Some(layers) = layers {
-            for (i, desc) in layers.iter() {
+            for (i, desc) in layers.into_iter() {
                 layer_descriptions.push(format!("{}: {}", i, desc));
             }
         }
@@ -78,7 +78,7 @@ mod tests {
             dataset: example_dataset,
         };
 
-        let outcome = prompt.format_with_template("You're {character_name}, the user's title is {user_title}\nYour response must match the following schema: {example_output}\n<dataset>\n{dataset}\n</dataset>", &None).unwrap();
+        let outcome = prompt.format_with_template("You're {character_name}, the user's title is {user_title}\nYour response must match the following schema: {example_output}\n<dataset>\n{dataset}\n</dataset>", None).unwrap();
         assert_eq!(
             outcome,
             format!(

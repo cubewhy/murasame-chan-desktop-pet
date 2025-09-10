@@ -7,6 +7,7 @@ use std::{
 use ai::{Dataset, LLM, SystemPromptTemplate, gemini::Gemini};
 use clap::Parser;
 use layer_composer::{Model, ModelTrait};
+use rustyline::error::ReadlineError;
 use zip::ZipArchive;
 
 use crate::cli::Cli;
@@ -22,7 +23,7 @@ pub async fn run() -> anyhow::Result<()> {
     let mut template = String::new();
     File::open(args.template)?.read_to_string(&mut template)?;
 
-    let mut model = args
+    let model = args
         .model
         .map(|path| -> anyhow::Result<Box<dyn ModelTrait>> {
             let file = File::open(path)?;
@@ -35,7 +36,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let system_instruction = prompt.format_with_template(
         &template,
-        &model.as_ref().map(|m| {
+        model.as_ref().map(|m| {
             m.layer_descriptions()
                 .iter()
                 .map(|desc| (*desc.0, desc.1.description.to_owned()))
@@ -55,14 +56,31 @@ pub async fn run() -> anyhow::Result<()> {
     llm.set_json_schema::<Vec<ai::AIResponse>>();
 
     loop {
-        print!(">>> ");
-        std::io::stdout().flush()?;
-        let mut buf = String::new();
-        std::io::stdin().read_line(&mut buf)?;
-        if buf.is_empty() {
-            continue;
-        }
-        let responses: Vec<ai::AIResponse> = serde_json::from_str(&llm.chat(&buf).await?)?;
+        let mut rl = rustyline::DefaultEditor::new()?;
+        let readline = rl.readline(">>> ");
+        let line = match readline {
+            Ok(line) => {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                line
+            }
+            Err(ReadlineError::Interrupted) => {
+                // Ctrl-C
+                println!("^C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                // Ctrl-D
+                println!("^D");
+                break;
+            }
+            Err(err) => {
+                eprintln!("error: {:?}", err);
+                break;
+            }
+        };
+        let responses: Vec<ai::AIResponse> = serde_json::from_str(&llm.chat(&line).await?)?;
         for res in responses {
             println!(
                 "{} (ja: {}) (layers: {})",
@@ -71,13 +89,14 @@ pub async fn run() -> anyhow::Result<()> {
                 res.layers
                     .iter()
                     .map(|i| {
+                        // TODO: replace with filter_map
                         model
-                            .as_mut()
+                            .as_ref()
                             .unwrap()
                             .layer_descriptions()
                             .get(i)
                             .unwrap()
-                            .description
+                            .name
                             .to_string()
                     })
                     .collect::<Vec<String>>()
@@ -85,4 +104,6 @@ pub async fn run() -> anyhow::Result<()> {
             );
         }
     }
+
+    Ok(())
 }
