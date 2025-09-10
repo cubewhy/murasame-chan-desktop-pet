@@ -6,6 +6,7 @@
 - The model editor: https://gist.github.com/cubewhy/8791f6fbc889c15cce172dccf3977489
 - Freemote: https://github.com/UlyssesWu/FreeMote
 - xp3-tools: https://github.com/cubewhy/xp3-tools
+- moegirl wiki: https://mzh.moegirl.org.cn/丛雨
 
 ## License
 
