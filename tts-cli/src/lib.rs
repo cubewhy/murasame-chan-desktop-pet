@@ -1,5 +1,3 @@
-use crate::cli::Cli;
-
 mod cli;
 
 pub fn run() -> anyhow::Result<()> {
