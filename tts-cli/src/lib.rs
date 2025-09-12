@@ -3,7 +3,7 @@ use crate::cli::Cli;
 mod cli;
 
 pub fn run() -> anyhow::Result<()> {
-    let arg = Cli::parse();
+    // let arg = Cli::parse();
 
     Ok(())
 }
