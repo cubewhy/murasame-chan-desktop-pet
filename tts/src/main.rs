@@ -5,7 +5,7 @@ use tts::{startup::create_server, telemetry::{get_subscriber, init_subscriber}};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Init logger
-    let subscriber = get_subscriber("zero2prod", "info", std::io::stdout);
+    let subscriber = get_subscriber("tts-backend", "info", std::io::stdout);
     init_subscriber(subscriber);
 
     // create the server

@@ -1,8 +1,8 @@
-use actix_web::{http::StatusCode, web, Responder, ResponseError};
+use actix_web::{Responder, ResponseError, http::StatusCode, web};
 
-use crate::{config::RefAudioConfig, TtsClient};
+use crate::{TtsClient, config::RefAudioConfig};
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct GenerateTtsModel {
     text: String,
 }
@@ -21,11 +21,13 @@ impl ResponseError for TtsError {
     }
 }
 
+#[tracing::instrument(skip(tts_client, ref_audio_config))]
 pub async fn generate_tts(
     body: web::Json<GenerateTtsModel>,
     tts_client: web::Data<TtsClient>,
     ref_audio_config: web::Data<RefAudioConfig>,
-) -> Result<impl Responder, TtsError> { // TODO: replace with another eror type
+) -> Result<impl Responder, TtsError> {
+    // TODO: replace with another eror type
     let text = body.text.as_ref();
 
     let voice_bytes = tts_client

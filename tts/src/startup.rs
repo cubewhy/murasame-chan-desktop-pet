@@ -1,4 +1,4 @@
-use std::{net::TcpListener, path::PathBuf};
+use std::net::TcpListener;
 
 use actix_web::{dev::Server, middleware::NormalizePath, web::{self, ServiceConfig}, App, HttpServer};
 use tracing_actix_web::TracingLogger;
