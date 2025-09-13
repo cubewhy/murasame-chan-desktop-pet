@@ -22,7 +22,6 @@ pub enum UiEvent {
 pub struct CommentEvent {
     pub user: String,
     pub text: String,
-    pub ts_ms: i64,
 }
 
 pub struct Bus {

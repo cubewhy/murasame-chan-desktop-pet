@@ -5,7 +5,7 @@ use image::DynamicImage;
 
 #[derive(Debug, Default)]
 pub struct FrontendApp {
-    input_text: String,
+    // input_text: String,
     image: Option<ColorImage>,
 }
 

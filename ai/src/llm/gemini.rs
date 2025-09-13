@@ -300,8 +300,8 @@ mod json_model {
         let parts = msg
             .parts
             .iter()
-            .filter_map(|p| match p {
-                MessagePart::Text { text } => Some(Part { text: text.clone() }),
+            .map(|p| match p {
+                MessagePart::Text { text } => Part { text: text.clone() },
             })
             .collect::<Vec<_>>();
         Content { role, parts }

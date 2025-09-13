@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use std::{borrow::Cow, collections::BTreeMap, fs::File, io::Read, sync::Arc};
 
 use ai::{Dataset, SystemPromptRenderer, chat, gemini::Gemini};

@@ -12,6 +12,7 @@ pub struct AppConfig {
     pub tts: TtsConfig,
     pub ai: AiConfig,
     pub render: RenderConfig,
+    pub server: ServerConfig,
 }
 
 impl AppConfig {
@@ -20,6 +21,19 @@ impl AppConfig {
             tts: TtsConfig::from_env()?,
             ai: AiConfig::from_env()?,
             render: RenderConfig::from_env()?,
+            server: ServerConfig::from_env()?,
+        })
+    }
+}
+
+pub struct ServerConfig {
+    pub addr: String,
+}
+
+impl ServerConfig {
+    pub fn from_env() -> anyhow::Result<Self> {
+        Ok(Self {
+            addr: get_env("VTUBER_SERVER_ADDRESS")?,
         })
     }
 }
