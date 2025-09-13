@@ -1,0 +1,12 @@
+[package]
+name = "vtuber"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ai = { path = "../ai" }
+layer-composer = { path = "../layer-composer" }
+anyhow = "1.0.99"
+eframe = "0.32.3"
+image = "0.25.8"
+reqwest = "0.12.23"
