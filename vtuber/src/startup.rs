@@ -1,13 +1,14 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, net::TcpListener, sync::Arc};
 
 use ai::{SystemPromptRenderer, gemini::Gemini};
 use tokio::sync::{broadcast, mpsc};
 use tts_client::TtsClient;
 
 use crate::{
-    bus::{Bus, CommentEvent, FrontendHandle, InEvent, UiEvent},
+    bus::{Bus, FrontendHandle, InEvent, UiEvent},
     config::AppConfig,
     gui,
+    server::create_server,
 };
 
 pub async fn run() -> anyhow::Result<()> {
@@ -30,14 +31,17 @@ async fn start_orchestrator(cfg: &'static AppConfig) -> anyhow::Result<FrontendH
     Ok(FrontendHandle { ui_rx: bus.ui_rx })
 }
 
-async fn spawn_http_server(_addr: String, in_tx: mpsc::Sender<InEvent>) -> anyhow::Result<()> {
-    // TODO: start a http server
-    in_tx
-        .send(InEvent::Comment(CommentEvent {
-            user: "system".to_string(),
-            text: "test".to_string(),
-        }))
-        .await?;
+async fn spawn_http_server(addr: String, in_tx: mpsc::Sender<InEvent>) -> anyhow::Result<()> {
+    tokio::spawn(async move {
+        let listener = TcpListener::bind(addr)?;
+        // Create the server
+        let server = create_server(listener, in_tx)?;
+
+        // Run the server
+        server.await?;
+
+        Ok::<(), anyhow::Error>(())
+    });
     Ok(())
 }
 

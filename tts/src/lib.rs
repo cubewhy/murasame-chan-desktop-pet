@@ -1,8 +1,8 @@
 mod client;
-pub mod startup;
-mod scope;
-mod handler;
-pub mod telemetry;
 pub mod config;
+mod handler;
+mod scope;
+pub mod startup;
+pub mod telemetry;
 
 pub use client::TtsClient;
