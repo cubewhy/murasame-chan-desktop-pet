@@ -158,7 +158,7 @@ pub enum RenderError {
     NoLayersProvided,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Model {
     bytes: Arc<Vec<u8>>,
     manifest: Arc<ModelManifest>,

@@ -13,10 +13,11 @@ use crate::{
 pub async fn run() -> anyhow::Result<()> {
     let config = AppConfig::from_env()?;
     // start workers
-    let frontend_handle = start_orchestrator(Box::leak(Box::new(config))).await?;
+    let config = Box::leak(Box::new(config));
+    let frontend_handle = start_orchestrator(config).await?;
 
     // start gui
-    gui::run_gui(frontend_handle.ui_rx).map_err(|e| anyhow::anyhow!("Gui error: {e}"))?;
+    gui::run_gui(frontend_handle.ui_rx, config).map_err(|e| anyhow::anyhow!("Gui error: {e}"))?;
     Ok(())
 }
 
@@ -30,6 +31,7 @@ async fn start_orchestrator(cfg: &'static AppConfig) -> anyhow::Result<FrontendH
 }
 
 async fn spawn_http_server(addr: String, in_tx: mpsc::Sender<InEvent>) -> anyhow::Result<()> {
+    // TODO: start a http server
     in_tx
         .send(InEvent::Comment(CommentEvent {
             user: "system".to_string(),
@@ -105,6 +107,7 @@ async fn spawn_ai_pipeline(
                         log::info!("Generate voice for text {}", &res.japanese_response);
                         match tts_client.generate(&res.japanese_response).await {
                             Ok(tts_out) => {
+                                log::info!("Send reply to frontend");
                                 let _ = ui_tx.send(UiEvent::AiReply {
                                     text: res.response.clone(),
                                     layers: res.layers.clone(),
@@ -112,6 +115,7 @@ async fn spawn_ai_pipeline(
                                 });
                             }
                             Err(e) => {
+                                log::error!("Failed to invoke tts: {e}");
                                 let _ = ui_tx.send(UiEvent::Error(e.to_string()));
                             }
                         }

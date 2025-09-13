@@ -85,14 +85,19 @@ impl AiConfig {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct RenderConfig {
     pub model: Model,
+    pub base_layer: String,
 }
 
 impl RenderConfig {
     pub fn from_env() -> anyhow::Result<Self> {
         let model_path = fs::canonicalize(get_env("VTUBER_RENDER_MODEL")?)?;
         let model = Model::from_reader(File::open(model_path)?)?;
-        Ok(Self { model })
+        Ok(Self {
+            model,
+            base_layer: get_env("VTUBER_RENDER_BASE_LAYER")?,
+        })
     }
 }
