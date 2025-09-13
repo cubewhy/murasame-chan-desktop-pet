@@ -1,12 +1,8 @@
-use std::{
-    collections::HashMap,
-    io::{BufReader, Cursor},
-    sync::mpsc,
-};
+use std::{collections::VecDeque, sync::mpsc};
 
 use bytes::Bytes;
 use eframe::egui::{self, Image};
-use rodio::{Decoder, OutputStream, OutputStreamBuilder};
+use rodio::{OutputStream, OutputStreamBuilder, Source};
 use tokio::sync::broadcast;
 
 use crate::{
@@ -36,7 +32,6 @@ pub fn run_gui(
 pub struct AppState {
     pub recent_comments: Vec<(String, String)>,
     pub current_line: Option<(String, Vec<String>, Bytes)>,
-    pub layer_textures: HashMap<String, egui::TextureHandle>,
 }
 
 impl AppState {
@@ -58,6 +53,10 @@ pub struct VtuberApp {
     img_tx: mpsc::Sender<egui::ColorImage>,
 
     audio_stream: OutputStream,
+    pending: VecDeque<(String, Vec<String>, Bytes)>,
+    is_playing: bool,
+    finished_rx: mpsc::Receiver<()>,
+    finished_tx: mpsc::Sender<()>,
 
     render_config: RenderConfig,
 }
@@ -66,6 +65,8 @@ impl VtuberApp {
     pub fn new(ui_rx: broadcast::Receiver<UiEvent>, app_config: &AppConfig) -> Self {
         let (img_tx, img_rx) = mpsc::channel::<egui::ColorImage>();
         let audio_stream = OutputStreamBuilder::open_default_stream().unwrap();
+        let (finished_tx, finished_rx) = mpsc::channel();
+
         Self {
             state: AppState::default(),
             composite_tex: None,
@@ -73,6 +74,11 @@ impl VtuberApp {
             img_rx,
             img_tx,
             audio_stream,
+
+            pending: VecDeque::new(),
+            is_playing: false,
+            finished_rx,
+            finished_tx,
 
             render_config: app_config.render.to_owned(),
         }
@@ -82,6 +88,58 @@ impl VtuberApp {
         while let Ok(ci) = self.img_rx.try_recv() {
             let tex = ctx.load_texture("composited", ci, egui::TextureOptions::LINEAR);
             self.composite_tex = Some(tex);
+        }
+    }
+
+    fn start_next_if_any(&mut self, ctx: &egui::Context) {
+        if let Some((text, reply_layers, voice)) = self.pending.pop_front() {
+            self.is_playing = true;
+
+            self.state.current_line = Some((text.clone(), reply_layers.clone(), voice.clone()));
+
+            let mut model = self.render_config.model.clone();
+            let mut layers_to_render = Vec::with_capacity(1 + reply_layers.len());
+            layers_to_render.push(self.render_config.base_layer.clone());
+            layers_to_render.extend(reply_layers.clone());
+
+            let tx_img = self.img_tx.clone();
+            std::thread::spawn(move || {
+                let image = model
+                    .render(&layers_to_render)
+                    .expect("image render failed");
+                let color_image = rgba_image_to_color_image(&image.into());
+                let _ = tx_img.send(color_image);
+            });
+
+            let voice_bytes_for_len = voice.clone();
+            let voice_bytes_for_play = voice.clone();
+
+            let finished_tx = self.finished_tx.clone();
+            let mix_handle = self.audio_stream.mixer().clone();
+
+            std::thread::spawn(move || {
+                let total = {
+                    let r = std::io::BufReader::new(std::io::Cursor::new(voice_bytes_for_len));
+                    rodio::Decoder::new(r).ok().and_then(|s| s.total_duration())
+                };
+
+                {
+                    let r = std::io::BufReader::new(std::io::Cursor::new(voice_bytes_for_play));
+                    if let Ok(source) = rodio::Decoder::new(r) {
+                        mix_handle.add(source);
+                    }
+                }
+
+                if let Some(d) = total {
+                    std::thread::sleep(d);
+                } else {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                }
+
+                let _ = finished_tx.send(());
+            });
+
+            ctx.request_repaint();
         }
     }
 
@@ -97,46 +155,23 @@ impl VtuberApp {
                     layers: reply_layers,
                     voice,
                 }) => {
-                    self.state.current_line =
-                        Some((text.clone(), reply_layers.clone(), voice.clone()));
-
-                    let mut layers_to_render = Vec::with_capacity(1 + reply_layers.len());
-                    layers_to_render.push(self.render_config.base_layer.clone());
-                    layers_to_render.extend(reply_layers.clone());
-
-                    let mut model = self.render_config.model.clone();
-
-                    let tx = self.img_tx.clone();
-
-                    std::thread::spawn(move || {
-                        let image = model
-                            .render(&layers_to_render)
-                            .expect("image render failed");
-                        let color_image = rgba_image_to_color_image(&image.into());
-                        let _ = tx.send(color_image);
-                    });
-
-                    let mixer_handle = self.audio_stream.mixer().clone();
-                    let voice_bytes = voice.to_vec();
-
-                    std::thread::spawn(move || {
-                        let cursor = std::io::Cursor::new(voice_bytes);
-                        let reader = std::io::BufReader::new(cursor);
-                        if let Ok(source) = rodio::Decoder::new(reader) {
-                            mixer_handle.add(source);
-                        }
-                    });
-
-                    ctx.request_repaint();
+                    self.pending.push_back((text, reply_layers, voice));
                 }
 
-                Ok(_) => {
-                    // TODO: display errors
-                }
+                Ok(_) => { /* TODO: display errors */ }
 
                 Err(broadcast::error::TryRecvError::Empty) => break,
                 Err(_) => break,
             }
+        }
+
+        if !self.is_playing {
+            self.start_next_if_any(ctx);
+        }
+
+        while self.finished_rx.try_recv().is_ok() {
+            self.is_playing = false;
+            self.start_next_if_any(ctx);
         }
     }
 }

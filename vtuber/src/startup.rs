@@ -30,7 +30,7 @@ async fn start_orchestrator(cfg: &'static AppConfig) -> anyhow::Result<FrontendH
     Ok(FrontendHandle { ui_rx: bus.ui_rx })
 }
 
-async fn spawn_http_server(addr: String, in_tx: mpsc::Sender<InEvent>) -> anyhow::Result<()> {
+async fn spawn_http_server(_addr: String, in_tx: mpsc::Sender<InEvent>) -> anyhow::Result<()> {
     // TODO: start a http server
     in_tx
         .send(InEvent::Comment(CommentEvent {
