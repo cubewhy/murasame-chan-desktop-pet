@@ -3,23 +3,17 @@ use std::net::TcpListener;
 use actix_web::{dev::Server, middleware::NormalizePath, web::{self, ServiceConfig}, App, HttpServer};
 use tracing_actix_web::TracingLogger;
 
-use crate::{config::RefAudioConfig, scope::tts::tts_scope, TtsClient};
+use crate::{config::AppConfig, scope::tts::tts_scope, TtsClient};
 
 fn configure_server(config: &mut ServiceConfig) {
     config
         .service(tts_scope());
 }
 
-pub fn create_server(listener: TcpListener) -> anyhow::Result<Server> {
-    let tts_client = web::Data::new(TtsClient::new("http://127.0.0.1:9880")); // TODO:
-                                                                                                                // read
-                                                                                                                // from
-                                                                                                                // config
+pub fn create_server(listener: TcpListener, config: AppConfig) -> anyhow::Result<Server> {
+    let tts_client = web::Data::new(TtsClient::new(config.tts.base_url));
 
-    let ref_audio_config = web::Data::new(RefAudioConfig {
-        text: "ふむ、おぬしが我輩のご主人か?".to_string(),
-        path: std::env::current_dir()?.join("resources/ref_audio.ogg"),
-    });
+    let ref_audio_config = web::Data::new(config.ref_audio);
 
     let server = HttpServer::new(move || App::new()
         .wrap(TracingLogger::default())

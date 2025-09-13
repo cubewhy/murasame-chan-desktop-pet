@@ -3,6 +3,6 @@ pub mod startup;
 mod scope;
 mod handler;
 pub mod telemetry;
-pub(crate) mod config;
+pub mod config;
 
 pub use client::TtsClient;
