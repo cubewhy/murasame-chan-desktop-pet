@@ -1,20 +1,19 @@
 use std::collections::{BTreeMap, HashMap};
 
 use dynfmt::Format;
-use layer_composer::ModelTrait;
 
 use crate::{
     dataset::Dataset,
-    model::{UsageExample, response::AIResponse},
+    model::{UsageExample, response::AIResponseModel},
 };
 
-pub struct SystemPromptTemplate {
+pub struct SystemPromptRenderer {
     character_name: String,
     user_title: String,
     dataset: Dataset,
 }
 
-impl SystemPromptTemplate {
+impl SystemPromptRenderer {
     pub fn new(
         character_name: impl Into<String>,
         user_title: impl Into<String>,
@@ -38,7 +37,7 @@ impl SystemPromptTemplate {
         let mut map: HashMap<&str, String> = HashMap::new();
         map.insert("character_name", self.character_name.clone());
         map.insert("user_title", self.user_title.clone());
-        map.insert("example_output", AIResponse::generate_example());
+        map.insert("example_output", AIResponseModel::generate_example());
 
         let mut layer_descriptions = Vec::new();
         if let Some(layers) = layers {
@@ -60,8 +59,8 @@ impl SystemPromptTemplate {
 mod tests {
     use crate::{
         dataset::{Dataset, Dialogue},
-        model::{UsageExample, response::AIResponse},
-        prompt::SystemPromptTemplate,
+        model::{UsageExample, response::AIResponseModel},
+        prompt::SystemPromptRenderer,
     };
 
     #[test]
@@ -72,7 +71,7 @@ mod tests {
             dialogues.push(Dialogue::new("test", "itworks"));
             Dataset::new(dialogues, true, |_| true)
         };
-        let prompt = SystemPromptTemplate {
+        let prompt = SystemPromptRenderer {
             character_name: "test".to_string(),
             user_title: "test_user".to_string(),
             dataset: example_dataset,
@@ -83,7 +82,7 @@ mod tests {
             outcome,
             format!(
                 "You're test, the user's title is test_user\nYour response must match the following schema: {}\n<dataset>\nok\nitworks\n</dataset>",
-                AIResponse::generate_example()
+                AIResponseModel::generate_example()
             )
         );
     }

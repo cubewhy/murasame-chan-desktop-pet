@@ -1,10 +1,6 @@
-use std::{
-    collections::BTreeMap,
-    fs::File,
-    io::{Read, Write},
-};
+use std::{collections::BTreeMap, fs::File, io::Read};
 
-use ai::{Dataset, LLM, SystemPromptTemplate, gemini::Gemini};
+use ai::{Dataset, LLM, SystemPromptRenderer, chat::chat, gemini::Gemini};
 use clap::Parser;
 use layer_composer::{Model, ModelTrait};
 use rustyline::error::ReadlineError;
@@ -19,7 +15,7 @@ pub async fn run() -> anyhow::Result<()> {
     // format system instruction
     let dataset = Dataset::from_reader(&mut File::open(args.dataset)?, false)?;
     let character_name = args.character_name;
-    let prompt = SystemPromptTemplate::new(character_name.to_string(), &args.title, dataset);
+    let prompt = SystemPromptRenderer::new(character_name.to_string(), &args.title, dataset);
     let mut template = String::new();
     File::open(args.template)?.read_to_string(&mut template)?;
 
@@ -53,7 +49,7 @@ pub async fn run() -> anyhow::Result<()> {
     llm.set_thinking(args.thinking);
 
     // apply response schema
-    llm.set_json_schema::<Vec<ai::AIResponse>>();
+    llm.set_json_schema::<Vec<ai::AIResponseModel>>();
 
     loop {
         let mut rl = rustyline::DefaultEditor::new()?;
@@ -80,27 +76,13 @@ pub async fn run() -> anyhow::Result<()> {
                 break;
             }
         };
-        let responses: Vec<ai::AIResponse> = serde_json::from_str(&llm.chat(&line).await?)?;
+        let responses = chat(&line, &mut llm, model.as_ref()).await?;
         for res in responses {
             println!(
                 "{} (ja: {}) (layers: {})",
                 res.response,
                 res.japanese_response,
-                res.layers
-                    .iter()
-                    .map(|i| {
-                        // TODO: replace with filter_map
-                        model
-                            .as_ref()
-                            .unwrap()
-                            .layer_descriptions()
-                            .get(i)
-                            .unwrap()
-                            .name
-                            .to_string()
-                    })
-                    .collect::<Vec<String>>()
-                    .join(", ")
+                res.layers.join(", ")
             );
         }
     }
