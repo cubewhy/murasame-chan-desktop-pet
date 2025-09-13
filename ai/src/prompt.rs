@@ -14,11 +14,7 @@ pub struct SystemPromptRenderer<'a> {
 }
 
 impl<'a> SystemPromptRenderer<'a> {
-    pub fn new(
-        character_name: &'a str,
-        user_title: &'a str,
-        dataset: &'a Dataset,
-    ) -> Self {
+    pub fn new(character_name: &'a str, user_title: &'a str, dataset: &'a Dataset) -> Self {
         Self {
             character_name,
             user_title,
@@ -30,9 +26,7 @@ impl<'a> SystemPromptRenderer<'a> {
         &'a self,
         template: &'a str,
         layers: Option<BTreeMap<i32, String>>,
-    ) -> Result<String, anyhow::Error>
-    {
-
+    ) -> Result<String, anyhow::Error> {
         // placeholders: {character_name}, {user_title}, {example_output}, {dataset}
         let mut map: HashMap<&str, String> = HashMap::new();
         map.insert("character_name", self.character_name.to_string());
@@ -66,9 +60,10 @@ mod tests {
     #[test]
     fn format_prompt() {
         let example_dataset = {
-            let mut dialogues = Vec::new();
-            dialogues.push(Dialogue::new("test", "ok"));
-            dialogues.push(Dialogue::new("test", "itworks"));
+            let dialogues = vec![
+                Dialogue::new("test", "ok"),
+                Dialogue::new("test", "itworks"),
+            ];
             Dataset::new(dialogues, true, |_| true)
         };
         let prompt = SystemPromptRenderer {

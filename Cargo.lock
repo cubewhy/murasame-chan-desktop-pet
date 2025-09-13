@@ -5239,6 +5239,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tts-client"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "reqwest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "type-map"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5376,12 +5386,14 @@ version = "0.1.0"
 dependencies = [
  "ai",
  "anyhow",
+ "bytes",
  "dotenvy",
  "eframe",
  "image",
  "layer-composer",
  "reqwest",
  "tokio",
+ "tts-client",
  "zip",
 ]
 

@@ -1,10 +1,11 @@
 use std::{
     collections::BTreeMap,
-    io::Read,
+    io::{Cursor, Read, Seek},
+    sync::Arc,
 };
 
 use image::DynamicImage;
-use zip::ZipArchive;
+use zip::{ZipArchive, result::ZipError};
 
 use crate::{LayerMetadata, TopLayerMetadata, compose::ComposeError, compose_layers_from_model};
 
@@ -48,7 +49,7 @@ mod json_model {
 
 #[derive(Clone, Debug)]
 pub struct ModelManifest {
-    pub layers: BTreeMap<String, LayerManifest>, // NOTE: we care the order of the layers
+    pub layers: BTreeMap<String, LayerManifest>, // we care the order of the layers
 }
 
 #[derive(Clone, Debug)]
@@ -67,6 +68,8 @@ pub enum LayerManifest {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ModelError {
+    #[error("Failed to open zip: {0}")]
+    Zip(#[from] ZipError),
     #[error("Invalid model: no manifest.json found")]
     NoManifest,
     #[error("Failed to parse json {0}")]
@@ -129,7 +132,7 @@ pub fn parse_model_manifest<T: std::io::Read + std::io::Seek>(
                 description,
                 bindings,
             } => LayerManifest::BaseLayer {
-                offset: offset.clone(),
+                offset: *offset,
                 description: description.to_owned(),
                 bindings: bindings.to_owned(),
             },
@@ -155,12 +158,10 @@ pub enum RenderError {
     NoLayersProvided,
 }
 
-pub struct Model<T>
-where
-    T: std::io::Read + std::io::Seek,
-{
-    manifest: ModelManifest,
-    zip: ZipArchive<T>,
+#[derive(Clone)]
+pub struct Model {
+    bytes: Arc<Vec<u8>>,
+    manifest: Arc<ModelManifest>,
 }
 
 pub struct LayerDescription {
@@ -168,45 +169,57 @@ pub struct LayerDescription {
     pub description: String,
 }
 
-pub trait ModelTrait {
-    fn manifest(&self) -> &ModelManifest;
+impl Model {
+    pub fn from_reader<R: Read + Seek>(mut reader: R) -> Result<Self, ModelError> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes)?;
 
-    fn layer_descriptions(&self) -> BTreeMap<i32, LayerDescription>;
-
-    fn render(&mut self, layers: &[String]) -> Result<DynamicImage, RenderError>;
-
-    fn get_image(&mut self, layer_name: &str) -> Result<DynamicImage, ModelError>;
-}
-
-impl<T> Model<T>
-where
-    T: std::io::Read + std::io::Seek,
-{
-    pub fn from_zip(mut zip: ZipArchive<T>) -> Result<Self, ModelError> {
+        let mut zip = ZipArchive::new(Cursor::new(&bytes[..]))?;
         let manifest = parse_model_manifest(&mut zip)?;
-        Ok(Self { manifest, zip })
-    }
-}
 
-impl<T> ModelTrait for Model<T>
-where
-    T: std::io::Read + std::io::Seek,
-{
-    fn manifest(&self) -> &ModelManifest {
+        Ok(Self {
+            bytes: Arc::new(bytes),
+            manifest: Arc::new(manifest),
+        })
+    }
+
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, ModelError> {
+        let mut zip = ZipArchive::new(Cursor::new(&bytes[..]))?;
+        let manifest = parse_model_manifest(&mut zip)?;
+        Ok(Self {
+            bytes: Arc::new(bytes),
+            manifest: Arc::new(manifest),
+        })
+    }
+
+    pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self, ModelError> {
+        let file = std::fs::File::open(path)?;
+        Self::from_reader(file)
+    }
+
+    #[inline]
+    fn open_zip(&self) -> Result<ZipArchive<Cursor<&[u8]>>, std::io::Error> {
+        Ok(ZipArchive::new(Cursor::new(&self.bytes[..]))?)
+    }
+
+    pub fn manifest(&self) -> &ModelManifest {
         &self.manifest
     }
 
-    fn layer_descriptions(&self) -> BTreeMap<i32, LayerDescription> {
+    pub fn layer_descriptions(&self) -> BTreeMap<i32, LayerDescription> {
         let mut map = BTreeMap::new();
         for (i, (layer_name, layer_manifest)) in self.manifest.layers.iter().enumerate() {
             match layer_manifest {
                 LayerManifest::TopLayer { description, .. }
                 | LayerManifest::BaseLayer { description, .. } => {
                     if let Some(desc) = description {
-                        map.insert(i.try_into().unwrap(), LayerDescription {
-                            name: layer_name.to_string(),
-                            description: desc.to_string()
-                        });
+                        map.insert(
+                            i.try_into().unwrap(),
+                            LayerDescription {
+                                name: layer_name.to_string(),
+                                description: desc.to_string(),
+                            },
+                        );
                     }
                 }
             }
@@ -214,7 +227,7 @@ where
         map
     }
 
-    fn render(&mut self, layers: &[String]) -> Result<DynamicImage, RenderError> {
+    pub fn render(&mut self, layers: &[String]) -> Result<DynamicImage, RenderError> {
         let mut flat: Vec<String> = Vec::with_capacity(layers.len());
         for name in layers {
             {
@@ -288,10 +301,10 @@ where
         outcome.ok_or(RenderError::NoLayersProvided)
     }
 
-    fn get_image(&mut self, layer_name: &str) -> Result<DynamicImage, ModelError> {
+    pub fn get_image(&mut self, layer_name: &str) -> Result<DynamicImage, ModelError> {
         // get the entry
-        let mut entry = self
-            .zip
+        let mut zip = self.open_zip()?;
+        let mut entry = zip
             .by_name(&format!("layers/{layer_name}"))
             .map_err(|_err| ModelError::NoLayer(layer_name.to_string(), _err))?;
 
@@ -300,7 +313,7 @@ where
         entry.read_to_end(&mut buf)?;
 
         // read image
-        let image = image::load_from_memory(&mut buf)?;
+        let image = image::load_from_memory(&buf)?;
 
         Ok(image)
     }

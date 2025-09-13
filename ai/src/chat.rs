@@ -1,4 +1,6 @@
-use layer_composer::ModelTrait;
+use std::sync::Arc;
+
+use layer_composer::Model;
 
 use crate::{AIResponseModel, LLM};
 
@@ -12,15 +14,30 @@ pub struct AIResponse {
 pub async fn chat(
     text: &str,
     llm: &mut impl LLM,
-    model: Option<&Box<dyn ModelTrait>>,
+    model: Option<Arc<Model>>,
 ) -> anyhow::Result<Vec<AIResponse>> {
     let responses: Vec<AIResponseModel> = serde_json::from_str(&llm.chat(text).await?)?;
 
-    Ok(responses.into_iter().map(|res| {
-        AIResponse {
+    Ok(responses
+        .into_iter()
+        .map(move |res| AIResponse {
             response: res.response,
             japanese_response: res.japanese_response,
-            layers: res.layers.iter().filter_map(|i| Some(model?.layer_descriptions().get(i)?.name.to_string())).collect()
-        }
-    }).collect())
+            layers: res
+                .layers
+                .iter()
+                .filter_map(|i| {
+                    Some(
+                        model
+                            .clone()
+                            .as_deref()?
+                            .layer_descriptions()
+                            .get(i)?
+                            .name
+                            .to_string(),
+                    )
+                })
+                .collect(),
+        })
+        .collect())
 }

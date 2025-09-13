@@ -49,7 +49,7 @@ impl Dataset {
     }
 
     pub fn guess_character_name(&self) -> Option<&str> {
-        self.dialogues.get(0).map(|s| s.character.as_str())
+        self.dialogues.first().map(|s| s.character.as_str())
     }
 
     pub fn to_prompt(&self) -> String {
@@ -61,7 +61,7 @@ impl Dataset {
             }
             outcome.push_str(&dia.content);
             if i != self.dialogues.len() - 1 {
-                outcome.push_str("\n");
+                outcome.push('\n');
             }
         }
 

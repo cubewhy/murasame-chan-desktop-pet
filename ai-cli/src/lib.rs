@@ -1,10 +1,10 @@
-use std::{borrow::Cow, collections::BTreeMap, fs::File, io::Read};
+use std::rc::Rc;
+use std::{borrow::Cow, collections::BTreeMap, fs::File, io::Read, sync::Arc};
 
-use ai::{Dataset, SystemPromptRenderer, chat::chat, gemini::Gemini};
+use ai::{Dataset, SystemPromptRenderer, chat, gemini::Gemini};
 use clap::Parser;
-use layer_composer::{Model, ModelTrait};
+use layer_composer::Model;
 use rustyline::error::ReadlineError;
-use zip::ZipArchive;
 
 use crate::cli::Cli;
 
@@ -21,11 +21,10 @@ pub async fn run() -> anyhow::Result<()> {
 
     let model = args
         .model
-        .map(|path| -> anyhow::Result<Box<dyn ModelTrait>> {
+        .map(|path| -> anyhow::Result<Arc<Model>> {
             let file = File::open(path)?;
-            let zip = ZipArchive::new(file)?;
-            let model = Model::from_zip(zip)?;
-            Ok(Box::new(model))
+            let model = Model::from_reader(file)?;
+            Ok(Arc::new(model))
         })
         .transpose()
         .map_err(|_err| anyhow::anyhow!("failed to open the model"))?;
@@ -76,7 +75,7 @@ pub async fn run() -> anyhow::Result<()> {
                 break;
             }
         };
-        let responses = chat(&line, &mut llm, model.as_ref()).await?;
+        let responses = chat(&line, &mut llm, model.clone()).await?;
         for res in responses {
             println!(
                 "{} (ja: {}) (layers: {})",

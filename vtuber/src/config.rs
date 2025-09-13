@@ -5,7 +5,6 @@ use std::{
 
 use ai::Dataset;
 use layer_composer::Model;
-use zip::ZipArchive;
 
 use crate::utils::get_env;
 
@@ -26,13 +25,13 @@ impl AppConfig {
 }
 
 pub struct TtsConfig {
-    pub generate_api: String,
+    pub base_url: String,
 }
 
 impl TtsConfig {
     pub fn from_env() -> anyhow::Result<Self> {
         Ok(Self {
-            generate_api: get_env("VTUBER_TTS_GENERATE_API")?,
+            base_url: get_env("VTUBER_TTS_API_BASE_URL")?,
         })
     }
 }
@@ -73,14 +72,13 @@ impl AiConfig {
 }
 
 pub struct RenderConfig {
-    pub model: Box<dyn layer_composer::ModelTrait>,
+    pub model: Model,
 }
 
 impl RenderConfig {
     pub fn from_env() -> anyhow::Result<Self> {
         let model_path = fs::canonicalize(get_env("VTUBER_RENDER_MODEL")?)?;
-        let zip = ZipArchive::new(File::open(model_path)?)?;
-        let model = Box::new(Model::from_zip(zip)?);
+        let model = Model::from_reader(File::open(model_path)?)?;
         Ok(Self { model })
     }
 }

@@ -1,11 +1,12 @@
-mod prompt;
-mod model;
+mod chat;
 mod dataset;
 mod llm;
-pub mod chat;
+mod model;
+mod prompt;
 pub(crate) mod utils;
 
-pub use prompt::SystemPromptRenderer;
-pub use model::{response::AIResponseModel, UsageExample};
+pub use chat::{AIResponse, chat};
 pub use dataset::{Dataset, Dialogue};
 pub use llm::{LLM, gemini};
+pub use model::{UsageExample, response::AIResponseModel};
+pub use prompt::SystemPromptRenderer;

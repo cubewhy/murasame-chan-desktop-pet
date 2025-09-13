@@ -179,7 +179,7 @@ impl LLM for Gemini<'_> {
         let answer = parsed
             .candidates
             .as_ref()
-            .and_then(|cands| cands.get(0))
+            .and_then(|cands| cands.first())
             .and_then(|c| c.content.as_ref())
             .and_then(|c| c.parts.as_ref())
             .map(|parts| {

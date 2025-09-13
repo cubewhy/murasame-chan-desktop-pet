@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use bytes::Bytes;
 use serde_json::json;
@@ -20,7 +20,7 @@ impl TtsClient {
         &self,
         text: &str,
         text_lang: &str,
-        ref_audio_path: &PathBuf,
+        ref_audio_path: &Path,
         ref_audio_text: &str,
     ) -> Result<Bytes, reqwest::Error> {
         let payload = json!({
@@ -47,7 +47,8 @@ impl TtsClient {
         });
 
         // send the request
-        let res = self.client
+        let res = self
+            .client
             .post(format!("{}/tts", self.base_url))
             .json(&payload)
             .send()
