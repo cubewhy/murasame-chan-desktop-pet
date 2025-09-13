@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
     let config = AppConfig::from_env()?;
 
     // create the server
-    let listener = TcpListener::bind("127.0.0.1:8080")?;
+    let listener = TcpListener::bind(&config.servlet.address)?;
     let server = create_server(listener, config)?;
 
     // run the server

@@ -29,7 +29,7 @@ impl TtsConfig {
 }
 
 pub struct ServletConfig {
-    address: String,
+    pub address: String,
 }
 
 impl ServletConfig {

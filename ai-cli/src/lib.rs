@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, fs::File, io::Read};
+use std::{borrow::Cow, collections::BTreeMap, fs::File, io::Read};
 
-use ai::{Dataset, LLM, SystemPromptRenderer, chat::chat, gemini::Gemini};
+use ai::{Dataset, SystemPromptRenderer, chat::chat, gemini::Gemini};
 use clap::Parser;
 use layer_composer::{Model, ModelTrait};
 use rustyline::error::ReadlineError;
@@ -15,7 +15,7 @@ pub async fn run() -> anyhow::Result<()> {
     // format system instruction
     let dataset = Dataset::from_reader(&mut File::open(args.dataset)?, false)?;
     let character_name = args.character_name;
-    let prompt = SystemPromptRenderer::new(character_name.to_string(), &args.title, dataset);
+    let prompt = SystemPromptRenderer::new(&character_name, &args.title, &dataset);
     let mut template = String::new();
     File::open(args.template)?.read_to_string(&mut template)?;
 
@@ -44,7 +44,7 @@ pub async fn run() -> anyhow::Result<()> {
     let mut llm = Gemini::new(
         &args.gemini_api_key,
         &args.ai_model,
-        Some(&system_instruction),
+        Some(Cow::Owned(system_instruction)),
     );
     llm.set_thinking(args.thinking);
 

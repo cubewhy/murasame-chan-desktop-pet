@@ -7,26 +7,26 @@ use crate::{
     model::{UsageExample, response::AIResponseModel},
 };
 
-pub struct SystemPromptRenderer {
-    character_name: String,
-    user_title: String,
-    dataset: Dataset,
+pub struct SystemPromptRenderer<'a> {
+    character_name: &'a str,
+    user_title: &'a str,
+    dataset: &'a Dataset,
 }
 
-impl SystemPromptRenderer {
+impl<'a> SystemPromptRenderer<'a> {
     pub fn new(
-        character_name: impl Into<String>,
-        user_title: impl Into<String>,
-        dataset: Dataset,
+        character_name: &'a str,
+        user_title: &'a str,
+        dataset: &'a Dataset,
     ) -> Self {
         Self {
-            character_name: character_name.into(),
-            user_title: user_title.into(),
+            character_name,
+            user_title,
             dataset,
         }
     }
 
-    pub fn format_with_template<'a>(
+    pub fn format_with_template(
         &'a self,
         template: &'a str,
         layers: Option<BTreeMap<i32, String>>,
@@ -35,8 +35,8 @@ impl SystemPromptRenderer {
 
         // placeholders: {character_name}, {user_title}, {example_output}, {dataset}
         let mut map: HashMap<&str, String> = HashMap::new();
-        map.insert("character_name", self.character_name.clone());
-        map.insert("user_title", self.user_title.clone());
+        map.insert("character_name", self.character_name.to_string());
+        map.insert("user_title", self.user_title.to_string());
         map.insert("example_output", AIResponseModel::generate_example());
 
         let mut layer_descriptions = Vec::new();
@@ -72,9 +72,9 @@ mod tests {
             Dataset::new(dialogues, true, |_| true)
         };
         let prompt = SystemPromptRenderer {
-            character_name: "test".to_string(),
-            user_title: "test_user".to_string(),
-            dataset: example_dataset,
+            character_name: "test",
+            user_title: "test_user",
+            dataset: &example_dataset,
         };
 
         let outcome = prompt.format_with_template("You're {character_name}, the user's title is {user_title}\nYour response must match the following schema: {example_output}\n<dataset>\n{dataset}\n</dataset>", None).unwrap();

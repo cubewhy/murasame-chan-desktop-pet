@@ -1,4 +1,9 @@
-use crate::{utils::{inlined_openapi_schema_for, sanitize_for_gemini_response_schema}, LLM};
+use std::borrow::Cow;
+
+use crate::{
+    LLM,
+    utils::{inlined_openapi_schema_for, sanitize_for_gemini_response_schema},
+};
 use async_trait::async_trait;
 use schemars::JsonSchema;
 use serde_json::Value as JsonValue;
@@ -6,7 +11,7 @@ use serde_json::Value as JsonValue;
 pub struct Gemini<'a> {
     api_key: &'a str,
     model: &'a str,
-    system_instruction: Option<&'a str>,
+    system_prompt: Option<Cow<'a, str>>,
     chat_history: Vec<Message>,
     generation_config: GenerationConfig,
 }
@@ -57,11 +62,11 @@ impl Default for ThinkingConfig {
 }
 
 impl<'a> Gemini<'a> {
-    pub fn new(api_key: &'a str, model: &'a str, system_instruction: Option<&'a str>) -> Self {
+    pub fn new(api_key: &'a str, model: &'a str, system_prompt: Option<Cow<'a, str>>) -> Self {
         Self {
             api_key,
             model,
-            system_instruction,
+            system_prompt,
             chat_history: Vec::new(),
             generation_config: GenerationConfig::default(),
         }
@@ -130,7 +135,7 @@ impl LLM for Gemini<'_> {
             }],
         });
 
-        let system_instruction = self.system_instruction.map(|sys| Content {
+        let system_instruction = self.system_prompt.as_ref().map(|sys| Content {
             role: None,
             parts: vec![Part {
                 text: sys.to_string(),
