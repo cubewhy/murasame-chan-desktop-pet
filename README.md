@@ -1,5 +1,7 @@
 # Murasame-chan Desktop Pet
 
+Rust implementation of [LemonQu-GIT/MurasamePet](https://github.com/LemonQu-GIT/MurasamePet/)
+
 ## Resources
 
 - The model editor: <https://gist.github.com/cubewhy/8791f6fbc889c15cce172dccf3977489>
@@ -7,13 +9,19 @@
 - xp3-tools: <https://github.com/cubewhy/xp3-tools>
 - moegirl wiki: <https://mzh.moegirl.org.cn/丛雨>
 
+## Features
+
+- No GPU needed - just click to run
+- No hard-encoding, you're allowed to customize everything
+
 ## Usage
 
 > Security Warning: Do not expose services on the public network, use 127.0.0.1
 > if possible
 
 - Generate an API key at [Google AI Studio](https://aistudio.google.com)
-- Download [GPT-SoVits](https://github.com/RVC-Boss/GPT-SoVITS)
+- Install [MiniConda](https://www.anaconda.com/docs/getting-started/miniconda/install#quickstart-install-instructions)
+- Download and install [GPT-SoVits](https://github.com/RVC-Boss/GPT-SoVITS)
 - Download the [models](https://huggingface.co/cubewhy/Murasame-chan-GPT-SoVits/)
 - (Optional) Install CUDA if you are using a Nvidia GPU
 - Put models into `GPT_weights_v2Pro/` and `SoVITS_weights_v2Pro/`
@@ -44,6 +52,20 @@ python api_v2.py
 
 ```shell
 ./vtuber
+```
+
+### Want a human-friendly Logging?
+
+- Install bunyan-rs by running
+
+```shell
+cargo install bunyan
+```
+
+- Than run your servlet with
+
+```shell
+<servlet> | bunyan
 ```
 
 ## License
