@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, VecDeque},
     fs::File,
     io::Read,
-    sync::mpsc,
+    sync::{Arc, mpsc},
 };
 
 use bytes::Bytes;
@@ -55,6 +55,9 @@ pub struct VtuberApp {
     need_init: bool,
 
     state: AppState,
+
+    character_name: String,
+
     ui_rx: broadcast::Receiver<UiEvent>,
 
     composite_tex: Option<egui::TextureHandle>,
@@ -80,6 +83,7 @@ impl VtuberApp {
         Self {
             need_init: true,
             state: AppState::default(),
+            character_name: app_config.ai.character_name.to_owned(),
             composite_tex: None,
             ui_rx,
             img_rx,
@@ -151,6 +155,68 @@ impl VtuberApp {
             });
 
             ctx.request_repaint();
+        }
+    }
+
+    fn draw_overlay_lines(
+        &self,
+        ui: &mut egui::Ui,
+        area: egui::Rect,
+        lines: &[&str],
+        font_id: egui::FontId,
+        text_color: egui::Color32,
+        padding: egui::Vec2,
+        corner_radius: f32,
+        bg_color: egui::Color32,
+        max_width_override: Option<f32>,
+    ) {
+        let painter = ui.painter_at(area);
+
+        let max_width =
+            max_width_override.unwrap_or_else(|| (area.width() - 2.0 * padding.x).max(0.0));
+
+        let mut galleys: Vec<Arc<egui::Galley>> = Vec::with_capacity(lines.len());
+        let mut total_h = 0.0f32;
+        let mut max_w = 0.0f32;
+
+        ui.fonts(|f| {
+            for &line in lines {
+                if line.is_empty() {
+                    let galley =
+                        f.layout(" ".to_owned(), font_id.clone(), Color32::WHITE, max_width);
+                    max_w = max_w.max(galley.size().x);
+                    total_h += galley.size().y;
+                    galleys.push(galley);
+                    continue;
+                }
+                let galley = f.layout(line.to_owned(), font_id.clone(), Color32::WHITE, max_width);
+                max_w = max_w.max(galley.size().x);
+                total_h += galley.size().y;
+                galleys.push(galley);
+            }
+        });
+
+        let text_origin = egui::pos2(
+            area.left() + padding.x,
+            (area.bottom() * 3.0 / 4.0) - padding.y - total_h,
+        );
+
+        let bg_rect = egui::Rect::from_min_size(
+            egui::pos2(text_origin.x - padding.x, text_origin.y - padding.y),
+            egui::vec2(max_w + padding.x * 2.0, total_h + padding.y * 2.0),
+        );
+        painter.rect(
+            bg_rect,
+            corner_radius,
+            bg_color,
+            egui::Stroke::NONE,
+            egui::StrokeKind::Inside,
+        );
+
+        let mut cursor = text_origin;
+        for galley in galleys {
+            painter.galley(cursor, galley.clone(), text_color);
+            cursor.y += galley.size().y;
         }
     }
 
@@ -283,24 +349,25 @@ impl eframe::App for VtuberApp {
 
                     // Render text
                     if let Some((line, _, _)) = &self.state.current_line {
-                        let rect = ui.clip_rect();
-                        let painter = ui.painter_at(rect);
+                        let lines: [&str; 2] = [&format!("【{}】", self.character_name), line];
 
-                        let max_width = rect.width() - 20.0;
-                        let font_id = FontId::proportional(32.0);
+                        let area = ui.clip_rect();
 
-                        let galley = ui.fonts(|f| {
-                            f.layout(line.clone(), font_id.clone(), Color32::WHITE, max_width)
-                        });
-
-                        let total_height = galley.size().y;
-                        let start_pos =
-                            Pos2::new(rect.left() + 10.0, rect.bottom() - total_height - 10.0);
-
-                        painter.galley(start_pos, galley, Color32::WHITE);
+                        self.draw_overlay_lines(
+                            ui,
+                            area,
+                            &lines,
+                            egui::FontId::proportional(26.0),
+                            Color32::WHITE,
+                            egui::vec2(12.0, 10.0),
+                            10.0,
+                            Color32::from_black_alpha(160),
+                            None,
+                        );
                     }
                 } else {
-                    ui.label("(compositing layers…)");
+                    // TODO: render default image
+                    ui.label("(wait for response...)");
                 }
             });
 
