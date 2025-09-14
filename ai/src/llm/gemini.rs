@@ -42,7 +42,7 @@ impl Default for GenerationConfig {
     fn default() -> Self {
         Self {
             thinking_config: ThinkingConfig::default(),
-            temperature: 1.0,
+            temperature: 1.7,
             response_mime_type: None,
             response_schema: None,
         }
