@@ -199,7 +199,7 @@ impl VtuberApp {
         let text_origin = egui::pos2(
             area.left() + padding.x,
             (area.bottom() * 3.0 / 4.0) - padding.y - total_h,
-        );
+        ); // TODO: pass this variable by parameters
 
         let bg_rect = egui::Rect::from_min_size(
             egui::pos2(text_origin.x - padding.x, text_origin.y - padding.y),

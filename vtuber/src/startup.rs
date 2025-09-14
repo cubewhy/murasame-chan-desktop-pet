@@ -46,11 +46,15 @@ async fn spawn_http_server(addr: String, in_tx: mpsc::Sender<InEvent>) -> anyhow
 }
 
 fn init_llm<'a>(config: &'a AppConfig) -> Result<Gemini<'a>, anyhow::Error> {
-    let system_prompt_renderer = SystemPromptRenderer::new(
-        &config.ai.character_name,
-        config.ai.user_title.as_deref().unwrap_or("<unknown>"),
-        &config.ai.dataset,
-    );
+    let user_title = config.ai.user_title.to_owned().unwrap_or_else(|| {
+        config
+            .ai
+            .user_title
+            .to_owned()
+            .unwrap_or_else(|| "<unknown>".to_string())
+    });
+    let system_prompt_renderer =
+        SystemPromptRenderer::new(&config.ai.character_name, &user_title, &config.ai.dataset);
     let system_prompt = system_prompt_renderer.format_with_template(
         &config.ai.system_instruction_template,
         Some(
