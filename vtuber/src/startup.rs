@@ -117,8 +117,8 @@ async fn spawn_ai_pipeline(
                             Ok(tts_out) => {
                                 log::info!("Send reply to frontend");
                                 let _ = ui_tx.send(UiEvent::AiReply {
-                                    text: res.response.clone(),
-                                    layers: res.layers.clone(),
+                                    text: res.response,
+                                    layers: res.layers,
                                     voice: tts_out,
                                 });
                             }

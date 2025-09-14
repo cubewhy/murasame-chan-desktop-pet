@@ -156,6 +156,9 @@ impl VtuberApp {
 
             ctx.request_repaint();
         }
+
+        // free memory
+        self.pending.shrink_to_fit();
     }
 
     fn draw_overlay_lines(
