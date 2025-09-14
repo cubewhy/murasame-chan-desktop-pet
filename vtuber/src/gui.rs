@@ -6,7 +6,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, FontId, Image, Pos2};
+use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, Image};
 use font_kit::{
     family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
