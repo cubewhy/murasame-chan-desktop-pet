@@ -1,7 +1,15 @@
-use std::{collections::VecDeque, sync::mpsc};
+use std::{
+    collections::{HashMap, VecDeque},
+    fs::File,
+    io::Read,
+    sync::mpsc,
+};
 
 use bytes::Bytes;
-use eframe::egui::{self, Image};
+use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, FontId, Image, Pos2};
+use font_kit::{
+    family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
+};
 use rodio::{OutputStream, OutputStreamBuilder, Source};
 use tokio::sync::broadcast;
 
@@ -44,6 +52,8 @@ impl AppState {
 }
 
 pub struct VtuberApp {
+    need_init: bool,
+
     state: AppState,
     ui_rx: broadcast::Receiver<UiEvent>,
 
@@ -68,6 +78,7 @@ impl VtuberApp {
         let (finished_tx, finished_rx) = mpsc::channel();
 
         Self {
+            need_init: true,
             state: AppState::default(),
             composite_tex: None,
             ui_rx,
@@ -176,29 +187,128 @@ impl VtuberApp {
     }
 }
 
+/// Attempt to load a system font by any of the given `family_names`, returning the first match.
+fn load_font_family(family_names: &[&str]) -> Option<Vec<u8>> {
+    let system_source = SystemSource::new();
+
+    for &name in family_names {
+        match system_source
+            .select_best_match(&[FamilyName::Title(name.to_string())], &Properties::new())
+        {
+            Ok(h) => match &h {
+                Handle::Memory { bytes, .. } => {
+                    log::debug!("Loaded {name} from memory.");
+                    return Some(bytes.to_vec());
+                }
+                Handle::Path { path, .. } => {
+                    log::info!("Loaded {name} from path: {:?}", path);
+                    let mut buf = Vec::new();
+                    File::open(path).unwrap().read_to_end(&mut buf).unwrap();
+                    return Some(buf);
+                }
+            },
+            Err(e) => log::error!("Could not load {}: {:?}", name, e),
+        }
+    }
+
+    None
+}
+
+pub fn load_system_fonts(mut fonts: FontDefinitions) -> FontDefinitions {
+    let mut fontdb = HashMap::new();
+
+    fontdb.insert(
+        "simplified_chinese",
+        vec![
+            "Heiti SC",
+            "Songti SC",
+            "Noto Sans CJK SC", // Good coverage for Simplified Chinese
+            "Noto Sans SC",
+            "WenQuanYi Zen Hei", // INcludes both Simplified and Traditional Chinese.
+            "SimSun",
+            "Noto Sans SC",
+            "PingFang SC",
+            "Source Han Sans CN",
+        ],
+    );
+
+    fontdb.insert("korean", vec!["Source Han Sans KR"]);
+
+    fontdb.insert(
+        "arabic_fonts",
+        vec![
+            "Noto Sans Arabic",
+            "Amiri",
+            "Lateef",
+            "Al Tarikh",
+            "Segoe UI",
+        ],
+    );
+
+    // Add more stuff here for better language support
+    for (region, font_names) in fontdb {
+        if let Some(font_data) = load_font_family(&font_names) {
+            log::info!("Inserting font {region}");
+            fonts
+                .font_data
+                .insert(region.to_owned(), FontData::from_owned(font_data).into());
+
+            fonts
+                .families
+                .get_mut(&FontFamily::Proportional)
+                .unwrap()
+                .push(region.to_owned());
+        }
+    }
+    fonts
+}
+
 impl eframe::App for VtuberApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_events(ctx);
         self.drain_pending_image(ctx);
 
-        // do render
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // display the image
-            if let Some(tex) = &self.composite_tex {
-                ui.add(Image::new(tex));
-            } else {
-                ui.label("(compositing layers…)");
-            }
+        if self.need_init {
+            ctx.set_fonts(load_system_fonts(FontDefinitions::empty()));
+            self.need_init = false;
+        }
 
-            // display text
-            // TODO: display text on the image
-            if let Some((line, layers, _voice)) = &self.state.current_line {
-                ui.label(format!("text: {}", line));
-                ui.label(format!("Layers: {}", layers.join(",")));
-            }
-        });
+        egui::CentralPanel::default()
+            .frame(egui::Frame::default().fill(Color32::TRANSPARENT))
+            .show(ctx, |ui| {
+                if let Some(tex) = &self.composite_tex {
+                    // Render the image
+                    let _image_response =
+                        ui.add(Image::new(tex).fit_to_exact_size(ui.available_size_before_wrap()));
+
+                    // Render text
+                    if let Some((line, _, _)) = &self.state.current_line {
+                        let rect = ui.clip_rect();
+                        let painter = ui.painter_at(rect);
+
+                        let max_width = rect.width() - 20.0;
+                        let font_id = FontId::proportional(32.0);
+
+                        let galley = ui.fonts(|f| {
+                            f.layout(line.clone(), font_id.clone(), Color32::WHITE, max_width)
+                        });
+
+                        let total_height = galley.size().y;
+                        let start_pos =
+                            Pos2::new(rect.left() + 10.0, rect.bottom() - total_height - 10.0);
+
+                        painter.galley(start_pos, galley, Color32::WHITE);
+                    }
+                } else {
+                    ui.label("(compositing layers…)");
+                }
+            });
 
         ctx.request_repaint();
+    }
+
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0, 0.0, 0.0, 0.0]
     }
 }
 
